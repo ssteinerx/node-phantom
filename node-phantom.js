@@ -17,14 +17,33 @@ var unwrapArray = function (arr) {
 	return arr && arr.length == 1 ? arr[0] : arr
 };
 
-var bindPhantomEvents = (function() {
-	var self = function(phantom_ps) {
+var phantomSpawner = (function() {
+	var self = function(options) {
+		return function (port, callback) {
+				var args = []
+				,	phantom;
+				for (var parm in options.parameters) {
+					args.push('--' + parm + '=' + options.parameters[parm]);
+				}
+				args = args.concat([__dirname + '/bridge.js', port]);
+				debug('spawn:', options.phantomPath, args)
+				phantom = child.spawn(options.phantomPath, args);
+				self.bindEvents(phantom);
+				process.nextTick(function() {
+					callback(self.hasErrors, phantom);
+				});
+			}
+	};
+
+	self.hasErrors = false;
+
+	self.bindEvents = function(phantom_ps) {
 		phantom_ps.stdout.on('data', self.stdout_data);
 		phantom_ps.stderr.on('data', self.stderr_data);
 		phantom_ps.on('error', self.phantom_error);
 		phantom_ps.on('exit', self.phantom_error);
 	};
-	self.hasErrors = false;
+
 	self.stdout_data = function (data) {
 		console.log('phantom stdout: ' + data);
 	};
@@ -34,26 +53,6 @@ var bindPhantomEvents = (function() {
 	self.phantom_error = function (data) {
 		self.hasErrors = true;
 	};
-	return self;
-})();
-
-var phantomSpawner = (function() {
-  var self = function(options) {
-  	return function (port, callback) {
-			var args = []
-			,	phantom;
-			for (var parm in options.parameters) {
-				args.push('--' + parm + '=' + options.parameters[parm]);
-			}
-			args = args.concat([__dirname + '/bridge.js', port]);
-			debug('spawn:', options.phantomPath, args)
-			phantom = child.spawn(options.phantomPath, args);
-			bindPhantomEvents(phantom);
-			process.nextTick(function() {
-				callback(bindPhantomEvents.hasErrors, phantom);
-			});
-		}
-  }
 
   return self;
 })();
