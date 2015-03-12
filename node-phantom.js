@@ -24,44 +24,45 @@ var httpReqListener = function (req, res) {
 	res.end(stub);
 };
 
-var phantomSpawner = (function() {
-	var self = function(options) {
-		return function (port, callback) {
-				var args = []
-				,	phantom;
-				for (var parm in options.parameters) {
-					args.push('--' + parm + '=' + options.parameters[parm]);
-				}
-				args = args.concat([__dirname + '/bridge.js', port]);
-				debug('spawn:', options.phantomPath, args)
-				phantom = child.spawn(options.phantomPath, args);
-				self.bindEvents(phantom);
-				process.nextTick(function() {
-					callback(self.hasErrors, phantom);
-				});
-			}
+var spawn_phantom = (function() {
+	var self = function (port, io, options, callback) {
+		self.io = io;
+		var args = []
+		,	phantom;
+		for (var parm in options.parameters) {
+			args.push('--' + parm + '=' + options.parameters[parm]);
+		}
+		args = args.concat([__dirname + '/bridge.js', port]);
+		self.phantom_ps = child.spawn(options.phantomPath, args);
+		self.bindEvents();
+		process.nextTick(function() {
+			callback(self.hasErrors, phantom);
+		});
 	};
+
 
 	self.hasErrors = false;
 
-	self.bindEvents = function(phantom_ps) {
-		phantom_ps.stdout.on('data', self.stdout_data);
-		phantom_ps.stderr.on('data', self.stderr_data);
-		phantom_ps.on('error', self.phantom_error);
-		phantom_ps.on('exit', self.phantom_error);
+	self.bindEvents = function() {
+		var phantom = self.phantom_ps;
+		phantom.stdout.on('data', self.stdout_data);
+		phantom.stderr.on('data', self.stderr_data);
+		phantom.on('error', self.phantom_error);
+		phantom.on('exit', self.phantom_error);
 	};
-	self.prematureExitOn = function(phantom_ps, server) {
+	self.prematureExitOn = function() {
+		var phantom_ps = self.phantom_ps;
 		// An exit event listener that is registered AFTER the phantomjs process
 		// is successfully created.
 		self.prematureExitHandler = function (code, signal) {
 			console.warn('phantom crash: code ' + code);
-			server.close();
+			self.io.httpServer.close();
 		};
 		phantom_ps.on('exit', self.prematureExitHandler);
 	};
 	//an exit is no longer premature now
-	self.prematureExitOff = function(phantom_ps) {
-		phantom_ps.removeListener('exit', self.prematureExitHandler);
+	self.prematureExitOff = function() {
+		self.phantom_ps.removeListener('exit', self.prematureExitHandler);
 	};
 	self.stdout_data = function (data) {
 		console.log('phantom stdout: ' + data);
@@ -83,22 +84,19 @@ module.exports = {
 		if (options.phantomPath === undefined) options.phantomPath = 'phantomjs';
 		if (options.parameters === undefined) options.parameters = {};
 
-		var spawn_phantom = phantomSpawner(options);
-
 		var server = http.createServer(httpReqListener).listen(function () {
 			var port = server.address().port
-			,	io = socketio.listen(server, {
-					'log level': 1
-				});
-			spawn_phantom(port, function (err, phantom) {
+			,	io   = socketio.listen(server, { 'log level': 1});
+			spawn_phantom(port, io, options, function (err, phantom) {
 				if (err) {
 					server.close();
 					callback(true);
 					return;
 				}
 				var pages = {}
-				,	cmds = {}
-				,	cmdid = 0;
+				,	cmdid = 0
+				,	cmds  = {}
+				;
 
 				function request(socket, args, callback) {
 					args.splice(1, 0, cmdid);
@@ -112,7 +110,7 @@ module.exports = {
 
 				io.sockets.on('connection', function (socket) {
 					socket.on('res', function (response) {
-						var id = response[0]
+						var id    = response[0]
 						,	cmdId = response[1];
 
 						switch (response[2]) {
@@ -172,7 +170,7 @@ module.exports = {
 						case 'phantomExited':
 							request(socket, [0, 'exitAck']);
 							server.close();
-							io.set('client store expiration', 0);
+							// io.set('client store expiration', 0);
 							cmds[cmdId].cb();
 							delete cmds[cmdId];
 							break;
@@ -217,10 +215,12 @@ module.exports = {
 						}
 					});
 					socket.on('push', function (request) {
-						var id = request[0];
-						var cmd = request[1];
-						var callback = makeCallback(pages[id] ? pages[id][cmd] : undefined);
-						callback(unwrapArray(request[2]));
+						var id       = request[0]
+						,	cmd      = request[1]
+						,	args     = unwrapArray(request[2])
+						,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
+						;
+						callback(args);
 					});
 					var proxy = {
 						createPage: function (callback) {
@@ -233,7 +233,7 @@ module.exports = {
 							request(socket, [0, 'addCookie', cookie], callback);
 						}
 						, exit: function (callback) {
-							phantomSpawner.prematureExitOff(phantom); //an exit is no longer premature now
+							spawn_phantom.prematureExitOff(); //an exit is no longer premature now
 							request(socket, [0, 'exit'], callback);
 						}
 						, on: function () {
@@ -245,7 +245,7 @@ module.exports = {
 					callback(null, proxy);
 				});
 
-				phantomSpawner.prematureExitOn(phantom, server); // not instance, but class
+				spawn_phantom.prematureExitOn(); // not instance, but class
 			});
 		});
 	}
