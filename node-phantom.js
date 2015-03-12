@@ -43,7 +43,19 @@ var phantomSpawner = (function() {
 		phantom_ps.on('error', self.phantom_error);
 		phantom_ps.on('exit', self.phantom_error);
 	};
-
+	self.prematureExitOn = function(phantom_ps, server) {
+		// An exit event listener that is registered AFTER the phantomjs process
+		// is successfully created.
+		self.prematureExitHandler = function (code, signal) {
+			console.warn('phantom crash: code ' + code);
+			server.close();
+		};
+		phantom_ps.on('exit', self.prematureExitHandler);
+	};
+	//an exit is no longer premature now
+	self.prematureExitOff = function(phantom_ps) {
+		phantom_ps.removeListener('exit', self.prematureExitHandler);
+	};
 	self.stdout_data = function (data) {
 		console.log('phantom stdout: ' + data);
 	};
@@ -222,7 +234,7 @@ module.exports = {
 							request(socket, [0, 'addCookie', cookie], callbackOrDummy(callback));
 						}
 						, exit: function (callback) {
-							phantom.removeListener('exit', prematureExitHandler); //an exit is no longer premature now
+							phantomSpawner.prematureExitOff(phantom); //an exit is no longer premature now
 							request(socket, [0, 'exit'], callbackOrDummy(callback));
 						}
 						, on: function () {
@@ -234,14 +246,7 @@ module.exports = {
 					callback(null, proxy);
 				});
 
-				// An exit event listener that is registered AFTER the phantomjs process
-				// is successfully created.
-				var prematureExitHandler = function (code, signal) {
-					console.warn('phantom crash: code ' + code);
-					server.close();
-				};
-
-				phantom.on('exit', prematureExitHandler);
+				phantomSpawner.prematureExitOn(phantom, server); // not instance, but class
 			});
 		});
 	}
