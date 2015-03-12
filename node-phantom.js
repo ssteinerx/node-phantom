@@ -16,6 +16,32 @@ var unwrapArray = function (arr) {
 	return arr && arr.length == 1 ? arr[0] : arr
 };
 
+var bindPhantomEvents = (function() {
+	var self = function(phantom_ps) {
+		debug('enter bindPhantomEvents');
+		debug('this');
+		debug(self);
+		phantom_ps.stdout.on('data', self.stdout_data);
+		phantom_ps.stderr.on('data', self.stderr_data);
+		phantom_ps.on('error', self.phantom_error);
+		phantom_ps.on('exit', self.phantom_error);
+	};
+	self.hasErrors = false;
+	self.stdout_data = function (data) {
+		console.log('phantom stdout: ' + data);
+	};
+	self.stderr_data = function (data) {
+		console.log('phantom stderr: ' + data);
+	};
+	self.phantom_error = function (data) {
+		self.hasErrors = true;
+		debug('bindPhantomEvents.phantom_error');
+		debug(self);
+	};
+	return self;
+})();
+
+
 module.exports = {
 	create: function (callback, options) {
 		if (options === undefined) options = {};
@@ -33,18 +59,18 @@ module.exports = {
 			args = args.concat([__dirname + '/bridge.js', port]);
 			debug('spawn:', options.phantomPath, args)
 			phantom = child.spawn(options.phantomPath, args);
-			phantom.stdout.on('data', function (data) {
-				return console.log('phantom stdout: ' + data);
-			});
-			phantom.stderr.on('data', function (data) {
-				return console.warn('phantom stderr: ' + data);
-			});
-			phantom.on('error', function () {
-				hasErrors = true;
-			});
-			phantom.on('exit', function (code) {
-				hasErrors = true; //if phantom exits it is always an error
-			});
+	
+			debug('phantom listeners for "exit" before binding', phantom.listeners('exit'));
+			debug('phantom.stdout listeners for "data" before binding', phantom.stdout.listeners('data'));
+			debug('phantom.stderr listeners for "data" before binding', phantom.stderr.listeners('data'));
+
+			bindPhantomEvents(phantom);
+
+			debug('phantom listeners for "exit" after binding', phantom.listeners('exit'));
+			debug('phantom.stdout listeners for "data" after binding', phantom.stdout.listeners('data'));
+			debug('phantom.stderr listeners for "data" after binding', phantom.stderr.listeners('data'));
+			
+
 			process.nextTick(function() {
 				callback(hasErrors, phantom);
 			});
