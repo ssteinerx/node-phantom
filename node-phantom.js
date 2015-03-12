@@ -7,8 +7,8 @@ var http     = require('http')
 ,	test     = require('assert')
 ,	stub     = fs.readFileSync(path.join(__dirname, "stub.html"))
 ,	debug    = console.log;
-	
-var callbackOrDummy = function (callback) {
+
+var makeCallback = function (callback) {
 	if (callback === undefined) callback = function () {};
 	return callback;
 };
@@ -19,11 +19,9 @@ var unwrapArray = function (arr) {
 
 // Our http server 'request' event listener, 
 // that simple serve stub.html which will be 'eaten' by phantom
-var httpReqListener = function (request, response) {
-	response.writeHead(200, {
-		"Content-Type": "text/html"
-	});
-	response.end(stub);
+var httpReqListener = function (req, res) {
+	res.writeHead(200, { "Content-Type": "text/html" });
+	res.end(stub);
 };
 
 var phantomSpawner = (function() {
@@ -107,7 +105,7 @@ module.exports = {
 					socket.emit('cmd', JSON.stringify(args));
 
 					cmds[cmdid] = {
-						cb: callbackOrDummy(callback)
+						cb: makeCallback(callback)
 					};
 					cmdid++;
 				}
@@ -221,7 +219,7 @@ module.exports = {
 					socket.on('push', function (request) {
 						var id = request[0];
 						var cmd = request[1];
-						var callback = callbackOrDummy(pages[id] ? pages[id][cmd] : undefined);
+						var callback = makeCallback(pages[id] ? pages[id][cmd] : undefined);
 						callback(unwrapArray(request[2]));
 					});
 					var proxy = {
