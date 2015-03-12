@@ -1,11 +1,12 @@
 //Released to the public domain.
-var http = require('http')
-,	fs = require('fs')
-,	path = require('path')
+var http     = require('http')
+,	fs       = require('fs')
+,	path     = require('path')
 ,	socketio = require('socket.io')
-,	child = require('child_process')
-,	stub = fs.readFileSync(path.join(__dirname, "stub.html"))
-,	debug = console.log;
+,	child    = require('child_process')
+,	test     = require('assert')
+,	stub     = fs.readFileSync(path.join(__dirname, "stub.html"))
+,	debug    = console.log;
 
 var callbackOrDummy = function (callback) {
 	if (callback === undefined) callback = function () {};
@@ -18,9 +19,6 @@ var unwrapArray = function (arr) {
 
 var bindPhantomEvents = (function() {
 	var self = function(phantom_ps) {
-		debug('enter bindPhantomEvents');
-		debug('this');
-		debug(self);
 		phantom_ps.stdout.on('data', self.stdout_data);
 		phantom_ps.stderr.on('data', self.stderr_data);
 		phantom_ps.on('error', self.phantom_error);
@@ -35,10 +33,29 @@ var bindPhantomEvents = (function() {
 	};
 	self.phantom_error = function (data) {
 		self.hasErrors = true;
-		debug('bindPhantomEvents.phantom_error');
-		debug(self);
 	};
 	return self;
+})();
+
+var phantomSpawner = (function() {
+  var self = function(options) {
+  	return function (port, callback) {
+			var args = []
+			,	phantom;
+			for (var parm in options.parameters) {
+				args.push('--' + parm + '=' + options.parameters[parm]);
+			}
+			args = args.concat([__dirname + '/bridge.js', port]);
+			debug('spawn:', options.phantomPath, args)
+			phantom = child.spawn(options.phantomPath, args);
+			bindPhantomEvents(phantom);
+			process.nextTick(function() {
+				callback(bindPhantomEvents.hasErrors, phantom);
+			});
+		}
+  }
+
+  return self;
 })();
 
 
@@ -48,36 +65,7 @@ module.exports = {
 		if (options.phantomPath === undefined) options.phantomPath = 'phantomjs';
 		if (options.parameters === undefined) options.parameters = {};
 
-		var spawnPhantom = function (port, callback) {
-			var hasErrors = false
-			,	args = []
-			,	phantom;
-
-			for (var parm in options.parameters) {
-				args.push('--' + parm + '=' + options.parameters[parm]);
-			}
-			args = args.concat([__dirname + '/bridge.js', port]);
-			debug('spawn:', options.phantomPath, args)
-			phantom = child.spawn(options.phantomPath, args);
-	
-			debug('phantom listeners for "exit" before binding', phantom.listeners('exit'));
-			debug('phantom.stdout listeners for "data" before binding', phantom.stdout.listeners('data'));
-			debug('phantom.stderr listeners for "data" before binding', phantom.stderr.listeners('data'));
-
-			bindPhantomEvents(phantom);
-
-			debug('phantom listeners for "exit" after binding', phantom.listeners('exit'));
-			debug('phantom.stdout listeners for "data" after binding', phantom.stdout.listeners('data'));
-			debug('phantom.stderr listeners for "data" after binding', phantom.stderr.listeners('data'));
-			
-
-			process.nextTick(function() {
-				callback(hasErrors, phantom);
-			});
-			// setTimeout(function () { //wait a bit to see if the spawning of phantomjs immediately fails due to bad path or similar
-			// 	callback(hasErrors, phantom);
-			// }, 100);
-		}
+		var spawn_phantom = phantomSpawner(options);
 
 		var httpRequestListener = function (request, response) {
 			response.writeHead(200, {
@@ -90,7 +78,7 @@ module.exports = {
 			,	io = socketio.listen(server, {
 					'log level': 1
 				});
-			spawnPhantom(port, function (err, phantom) {
+			spawn_phantom(port, function (err, phantom) {
 				if (err) {
 					server.close();
 					callback(true);
