@@ -107,7 +107,7 @@ module.exports = {
 					socket.emit('cmd', JSON.stringify(args));
 
 					cmds[cmdid] = {
-						cb: callback
+						cb: callbackOrDummy(callback)
 					};
 					cmdid++;
 				}
@@ -128,43 +128,43 @@ module.exports = {
 									}
 								}
 								, close: function (callback) {
-									request(socket, [id, 'pageClose'], callbackOrDummy(callback));
+									request(socket, [id, 'pageClose'], callback);
 								}
 								, render: function (filename, callback) {
-									request(socket, [id, 'pageRender', filename], callbackOrDummy(callback));
+									request(socket, [id, 'pageRender', filename], callback);
 								}
 								, renderBase64: function (extension, callback) {
-									request(socket, [id, 'pageRenderBase64', extension], callbackOrDummy(callback));
+									request(socket, [id, 'pageRenderBase64', extension], callback);
 								}
 								, injectJs: function (url, callback) {
-									request(socket, [id, 'pageInjectJs', url], callbackOrDummy(callback));
+									request(socket, [id, 'pageInjectJs', url], callback);
 								}
 								, includeJs: function (url, callback) {
-									request(socket, [id, 'pageIncludeJs', url], callbackOrDummy(callback));
+									request(socket, [id, 'pageIncludeJs', url], callback);
 								}
 								, sendEvent: function (event, x, y, callback) {
-									request(socket, [id, 'pageSendEvent', event, x, y], callbackOrDummy(callback));
+									request(socket, [id, 'pageSendEvent', event, x, y], callback);
 								}
 								, uploadFile: function (selector, filename, callback) {
-									request(socket, [id, 'pageUploadFile', selector, filename], callbackOrDummy(callback));
+									request(socket, [id, 'pageUploadFile', selector, filename], callback);
 								}
 								, evaluate: function (evaluator, callback) {
-									request(socket, [id, 'pageEvaluate', evaluator.toString()].concat(Array.prototype.slice.call(arguments, 2)), callbackOrDummy(callback));
+									request(socket, [id, 'pageEvaluate', evaluator.toString()].concat(Array.prototype.slice.call(arguments, 2)), callback);
 								}
 								, evaluateAsync: function (evaluator, callback) {
-									request(socket, [id, 'pageEvaluateAsync', evaluator.toString()].concat(Array.prototype.slice.call(arguments, 2)), callbackOrDummy(callback));
+									request(socket, [id, 'pageEvaluateAsync', evaluator.toString()].concat(Array.prototype.slice.call(arguments, 2)), callback);
 								}
 								, set: function (name, value, callback) {
-									request(socket, [id, 'pageSet', name, value], callbackOrDummy(callback));
+									request(socket, [id, 'pageSet', name, value], callback);
 								}
 								, get: function (name, callback) {
-									request(socket, [id, 'pageGet', name], callbackOrDummy(callback));
+									request(socket, [id, 'pageGet', name], callback);
 								}
 								, setFn: function (pageCallbackName, fn, callback) {
-									request(socket, [id, 'pageSetFn', pageCallbackName, fn.toString()], callbackOrDummy(callback));
+									request(socket, [id, 'pageSetFn', pageCallbackName, fn.toString()], callback);
 								}
 								, setViewport: function (viewport, callback) {
-									request(socket, [id, 'pageSetViewport', viewport.width, viewport.height], callbackOrDummy(callback));
+									request(socket, [id, 'pageSetViewport', viewport.width, viewport.height], callback);
 								}
 							}
 							pages[id] = pageProxy;
@@ -226,17 +226,17 @@ module.exports = {
 					});
 					var proxy = {
 						createPage: function (callback) {
-							request(socket, [0, 'createPage'], callbackOrDummy(callback));
+							request(socket, [0, 'createPage'], callback);
 						}
 						, injectJs: function (filename, callback) {
-							request(socket, [0, 'injectJs', filename], callbackOrDummy(callback));
+							request(socket, [0, 'injectJs', filename], callback);
 						}
 						, addCookie: function (cookie, callback) {
-							request(socket, [0, 'addCookie', cookie], callbackOrDummy(callback));
+							request(socket, [0, 'addCookie', cookie], callback);
 						}
 						, exit: function (callback) {
 							phantomSpawner.prematureExitOff(phantom); //an exit is no longer premature now
-							request(socket, [0, 'exit'], callbackOrDummy(callback));
+							request(socket, [0, 'exit'], callback);
 						}
 						, on: function () {
 							phantom.on.apply(phantom, arguments);
