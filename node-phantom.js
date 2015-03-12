@@ -7,7 +7,7 @@ var http     = require('http')
 ,	test     = require('assert')
 ,	stub     = fs.readFileSync(path.join(__dirname, "stub.html"))
 ,	debug    = console.log;
-
+	
 var callbackOrDummy = function (callback) {
 	if (callback === undefined) callback = function () {};
 	return callback;
@@ -15,6 +15,15 @@ var callbackOrDummy = function (callback) {
 
 var unwrapArray = function (arr) {
 	return arr && arr.length == 1 ? arr[0] : arr
+};
+
+// Our http server 'request' event listener, 
+// that simple serve stub.html which will be 'eaten' by phantom
+var httpReqListener = function (request, response) {
+	response.writeHead(200, {
+		"Content-Type": "text/html"
+	});
+	response.end(stub);
 };
 
 var phantomSpawner = (function() {
@@ -78,13 +87,7 @@ module.exports = {
 
 		var spawn_phantom = phantomSpawner(options);
 
-		var httpRequestListener = function (request, response) {
-			response.writeHead(200, {
-				"Content-Type": "text/html"
-			});
-			response.end(stub);
-		};
-		var server = http.createServer(httpRequestListener).listen(function () {
+		var server = http.createServer(httpReqListener).listen(function () {
 			var port = server.address().port
 			,	io = socketio.listen(server, {
 					'log level': 1
@@ -101,7 +104,6 @@ module.exports = {
 
 				function request(socket, args, callback) {
 					args.splice(1, 0, cmdid);
-					//					console.log('requesting:'+args);
 					socket.emit('cmd', JSON.stringify(args));
 
 					cmds[cmdid] = {
@@ -112,7 +114,6 @@ module.exports = {
 
 				io.sockets.on('connection', function (socket) {
 					socket.on('res', function (response) {
-						//						console.log(response);
 						var id = response[0]
 						,	cmdId = response[1];
 
