@@ -25,11 +25,11 @@ var httpReqListener = function (req, res) {
 };
 
 var spawn_phantom = (function() {
-	var self = function (port, io, options, callback) {
+	var self = function (port, io, options, initCompletedCallback) {
 		self.port     = port;
 		self.io       = io;
-		self.callback = callback;
 		self.opts     = options;
+		self.initCompletedCallback = initCompletedCallback;
 		self.spawn();
 		self.bindEvents();
 		self.initComplete();
@@ -56,7 +56,7 @@ var spawn_phantom = (function() {
 
 	self.initComplete = function() {
 		process.nextTick(function() {
-			self.callback(self.hasErrors, self.phantom_ps);
+			self.initCompletedCallback(self.hasErrors, self.phantom_ps);
 		});
 	};
 
