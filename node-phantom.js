@@ -26,20 +26,23 @@ var httpReqListener = function (req, res) {
 
 var spawn_phantom = (function() {
 	var self = function (port, io, options, callback) {
-		self.io = io;
-		var args = []
-		,	phantom;
-		for (var parm in options.parameters) {
-			args.push('--' + parm + '=' + options.parameters[parm]);
-		}
-		args = args.concat([__dirname + '/bridge.js', port]);
-		self.phantom_ps = child.spawn(options.phantomPath, args);
+		self.port     = port;
+		self.io       = io;
+		self.callback = callback;
+		self.opts     = options;
+		self.spawn();
 		self.bindEvents();
-		process.nextTick(function() {
-			callback(self.hasErrors, phantom);
-		});
+		self.initComplete();
 	};
 
+	self.spawn = function() {
+		var args = [];
+		for (var parm in self.opts.parameters) {
+			args.push('--' + parm + '=' + self.opts.parameters[parm]);
+		}
+		args = args.concat([__dirname + '/bridge.js', self.port]);
+		self.phantom_ps = child.spawn(self.opts.phantomPath, args);
+	};
 
 	self.hasErrors = false;
 
@@ -50,15 +53,21 @@ var spawn_phantom = (function() {
 		phantom.on('error', self.phantom_error);
 		phantom.on('exit', self.phantom_error);
 	};
+
+	self.initComplete = function() {
+		process.nextTick(function() {
+			self.callback(self.hasErrors, self.phantom_ps);
+		});
+	};
+
 	self.prematureExitOn = function() {
-		var phantom_ps = self.phantom_ps;
 		// An exit event listener that is registered AFTER the phantomjs process
 		// is successfully created.
 		self.prematureExitHandler = function (code, signal) {
 			console.warn('phantom crash: code ' + code);
 			self.io.httpServer.close();
 		};
-		phantom_ps.on('exit', self.prematureExitHandler);
+		self.phantom_ps.on('exit', self.prematureExitHandler);
 	};
 	//an exit is no longer premature now
 	self.prematureExitOff = function() {
@@ -84,12 +93,13 @@ module.exports = {
 		if (options.phantomPath === undefined) options.phantomPath = 'phantomjs';
 		if (options.parameters === undefined) options.parameters = {};
 
-		var server = http.createServer(httpReqListener).listen(function () {
+		var server = http.createServer(httpReqListener);
+		server.listen(function () {
 			var port = server.address().port
 			,	io   = socketio.listen(server, { 'log level': 1});
 			spawn_phantom(port, io, options, function (err, phantom) {
 				if (err) {
-					server.close();
+					io.httpServer.close();
 					callback(true);
 					return;
 				}
