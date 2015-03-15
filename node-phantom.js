@@ -89,15 +89,7 @@ var spawn_phantom = (function() {
   return self;
 })();
 
-var socketOnPush = function (req) {
-	debug('socket.push\n', req);
-	var id       = req[0]
-	,	cmd      = req[1]
-	,	args     = unwrapArray(req[2])
-	,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
-	;
-	callback(args);
-};
+
 
 module.exports = {
 	create: function (callback, options) {
@@ -195,7 +187,15 @@ module.exports = {
 							break;
 						}
 					});
-					socket.on('push', socketOnPush);
+					socket.on('push', function (req) {
+						debug('socket.push\n', req);
+						var id       = req[0]
+						,	cmd      = req[1]
+						,	args     = unwrapArray(req[2])
+						,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
+						;
+						callback(args);
+					});
 
 					var proxy = new PhantomProxy({
 						socket: socket,
