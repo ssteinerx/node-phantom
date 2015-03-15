@@ -6,7 +6,9 @@ var http     = require('http')
 ,	child    = require('child_process')
 ,	test     = require('assert')
 ,	stub     = fs.readFileSync(path.join(__dirname, "stub.html"))
-,	debug    = console.log;
+,	debug    = console.log
+,	PageProxy = require('./pageproxy')
+;
 
 var makeCallback = function (callback) {
 	if (callback === undefined) callback = function () {};
@@ -99,6 +101,7 @@ module.exports = {
 			,	io   = socketio.listen(server, { 'log level': 1});
 			spawn_phantom(port, io, options, function (err, phantom) {
 				if (err) {
+					debug('spawn_phantom.initCompletedCallback/err', err);
 					io.httpServer.close();
 					callback(true);
 					return;
@@ -120,59 +123,17 @@ module.exports = {
 
 				io.sockets.on('connection', function (socket) {
 					socket.on('res', function (response) {
+						debug('socket.res\n', response);
 						var id    = response[0]
 						,	cmdId = response[1];
 
 						switch (response[2]) {
 						case 'pageCreated':
-							var pageProxy = {
-								open: function (url, callback) {
-									if (callback === undefined) {
-										request(socket, [id, 'pageOpen', url]);
-									} else {
-										request(socket, [id, 'pageOpenWithCallback', url], callback);
-									}
-								}
-								, close: function (callback) {
-									request(socket, [id, 'pageClose'], callback);
-								}
-								, render: function (filename, callback) {
-									request(socket, [id, 'pageRender', filename], callback);
-								}
-								, renderBase64: function (extension, callback) {
-									request(socket, [id, 'pageRenderBase64', extension], callback);
-								}
-								, injectJs: function (url, callback) {
-									request(socket, [id, 'pageInjectJs', url], callback);
-								}
-								, includeJs: function (url, callback) {
-									request(socket, [id, 'pageIncludeJs', url], callback);
-								}
-								, sendEvent: function (event, x, y, callback) {
-									request(socket, [id, 'pageSendEvent', event, x, y], callback);
-								}
-								, uploadFile: function (selector, filename, callback) {
-									request(socket, [id, 'pageUploadFile', selector, filename], callback);
-								}
-								, evaluate: function (evaluator, callback) {
-									request(socket, [id, 'pageEvaluate', evaluator.toString()].concat(Array.prototype.slice.call(arguments, 2)), callback);
-								}
-								, evaluateAsync: function (evaluator, callback) {
-									request(socket, [id, 'pageEvaluateAsync', evaluator.toString()].concat(Array.prototype.slice.call(arguments, 2)), callback);
-								}
-								, set: function (name, value, callback) {
-									request(socket, [id, 'pageSet', name, value], callback);
-								}
-								, get: function (name, callback) {
-									request(socket, [id, 'pageGet', name], callback);
-								}
-								, setFn: function (pageCallbackName, fn, callback) {
-									request(socket, [id, 'pageSetFn', pageCallbackName, fn.toString()], callback);
-								}
-								, setViewport: function (viewport, callback) {
-									request(socket, [id, 'pageSetViewport', viewport.width, viewport.height], callback);
-								}
-							}
+							var pageProxy = new PageProxy({
+								id: id,
+								socket: socket,
+								request: request
+							});
 							pages[id] = pageProxy;
 							cmds[cmdId].cb(null, pageProxy);
 							delete cmds[cmdId];
@@ -224,10 +185,11 @@ module.exports = {
 							break;
 						}
 					});
-					socket.on('push', function (request) {
-						var id       = request[0]
-						,	cmd      = request[1]
-						,	args     = unwrapArray(request[2])
+					socket.on('push', function (req) {
+						debug('socket.push\n', req);
+						var id       = req[0]
+						,	cmd      = req[1]
+						,	args     = unwrapArray(req[2])
 						,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
 						;
 						callback(args);
