@@ -8,6 +8,7 @@ var http     = require('http')
 ,	stub     = fs.readFileSync(path.join(__dirname, "stub.html"))
 ,	debug    = console.log
 ,	PageProxy = require('./pageproxy')
+,	PhantomProxy = require('./phantomproxy')
 ;
 
 var makeCallback = function (callback) {
@@ -88,6 +89,15 @@ var spawn_phantom = (function() {
   return self;
 })();
 
+var socketOnPush = function (req) {
+	debug('socket.push\n', req);
+	var id       = req[0]
+	,	cmd      = req[1]
+	,	args     = unwrapArray(req[2])
+	,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
+	;
+	callback(args);
+};
 
 module.exports = {
 	create: function (callback, options) {
@@ -185,34 +195,14 @@ module.exports = {
 							break;
 						}
 					});
-					socket.on('push', function (req) {
-						debug('socket.push\n', req);
-						var id       = req[0]
-						,	cmd      = req[1]
-						,	args     = unwrapArray(req[2])
-						,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
-						;
-						callback(args);
+					socket.on('push', socketOnPush);
+
+					var proxy = new PhantomProxy({
+						socket: socket,
+						request: request,
+						phantom: phantom,
+						spawn_phantom: spawn_phantom
 					});
-					var proxy = {
-						createPage: function (callback) {
-							request(socket, [0, 'createPage'], callback);
-						}
-						, injectJs: function (filename, callback) {
-							request(socket, [0, 'injectJs', filename], callback);
-						}
-						, addCookie: function (cookie, callback) {
-							request(socket, [0, 'addCookie', cookie], callback);
-						}
-						, exit: function (callback) {
-							spawn_phantom.prematureExitOff(); //an exit is no longer premature now
-							request(socket, [0, 'exit'], callback);
-						}
-						, on: function () {
-							phantom.on.apply(phantom, arguments);
-						}
-						, _phantom: phantom
-					};
 
 					callback(null, proxy);
 				});
