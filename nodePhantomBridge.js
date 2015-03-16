@@ -5,7 +5,13 @@ var fs             = require('fs')
 ,	html           = fs.readFileSync(path.join(__dirname, "stub.html"))
 ,	ioProxy        = require('./ioProxy')
 ,	PhantomSpawner = require('./phantomspawner')
+,	debug          = console.log
+,	_              = require('lodash')
 ,	NodePhantomBridge;
+
+
+// debug('attachSocketIOServer');
+// _.each(this, function(v, k) { debug(k+' : '+ typeof v); })
 
 
 NodePhantomBridge = (function() {
@@ -14,35 +20,43 @@ NodePhantomBridge = (function() {
 		// options.keys = [userOptions, userOptions]
 		this.userOptions  = normalize(options.userOptions);
 		this.userCallback = options.userCallback;
-		this.createHttpServer()	// after this point we have this.httpServer
-		this.attachServer()		// after this point we have this.httpServer
+		this.createHttpServer();	// after this point we have this.httpServer
+		this.attachHttpServer();
 	}
 
 	NodePhantomBridge.prototype.createHttpServer = function() {
 		this.httpServer = http.createServer(httpReqListener);
 	};
 
-	NodePhantomBridge.prototype.attachServer = function() {
+	NodePhantomBridge.prototype.attachHttpServer = function() {
 		this.httpServer.listen(this.onHttpServerListen())
 	};
 
 	NodePhantomBridge.prototype.onHttpServerListen = function() {
 		var self = this;	// closure
 		return function () {
-			var	io   = socketio.listen(self.httpServer, { 'log level': 1})
-			,	spawner = new PhantomSpawner({
-					options: self.userOptions,
-					io:      io,
-					userClb: self.userCallback,
-					pages: {},
-					cmdid: 0,
-					cmds: {},
-					spawnded: function (phantom) {
-						new ioProxy(spawner);
-						spawner.prematureExitOn();
-					}
-				});
+			self.attachSocketIO();	// after this point we have this.io socketio obj
+			self.spawnPhantom();	// after this point we have
 		};
+	};
+
+	NodePhantomBridge.prototype.attachSocketIO = function() {
+		this.io = socketio.listen(this.httpServer, { 'log level': 1});
+	};
+
+	NodePhantomBridge.prototype.spawnPhantom = function() {
+		var	spawner = new PhantomSpawner({
+				io:      this.io,
+				userClb: this.userCallback,
+				options: this.userOptions,
+				pages: {},
+				cmdid: 0,
+				cmds: {},
+				spawnded: function (phantom) {
+					new ioProxy(spawner);
+					spawner.prematureExitOn();
+				}
+		});
 	};
 
 	// 'private'
