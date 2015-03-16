@@ -6,19 +6,11 @@ var http           = require('http')
 ,	PageProxy      = require('./pageproxy')
 ,	PhantomProxy   = require('./phantomproxy')
 ,	ResResponder   = require('./res_responder')
+,	PushResponder  = require('./push_responder')
 ,	PhantomSpawner = require('./phantomspawner')
 ,	stub           = fs.readFileSync(path.join(__dirname, "stub.html"))
 ,	debug          = console.log
 ;
-
-var makeCallback = function (callback) {
-	if (callback === undefined) callback = function () {};
-	return callback;
-};
-
-var unwrapArray = function (arr) {
-	return arr && arr.length == 1 ? arr[0] : arr
-};
 
 // Our http server 'request' event listener, 
 // that simple serve stub.html which will be 'eaten' by phantom
@@ -59,13 +51,10 @@ module.exports = {
 								})
 							});
 							socket.on('push', function (req) {
-								debug('socket.push\n', req);
-								var id       = req[0]
-								,	cmd      = req[1]
-								,	args     = unwrapArray(req[2])
-								,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
-								;
-								callback(args);
+								new PushResponder({
+									request: req,
+									spawner: spawner
+								})
 							});
 							userCallback(null, new PhantomProxy({
 								socket: socket,

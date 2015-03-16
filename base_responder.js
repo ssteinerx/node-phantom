@@ -39,6 +39,8 @@ BaseResponder = (function() {
 		console.log("BaseResponder::default");
 	};
 
+	BaseResponder.prototype.mapings = [];
+
 	return BaseResponder;
 
 })();
