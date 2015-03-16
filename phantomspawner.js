@@ -7,6 +7,7 @@ var	_              = require('lodash')
 		this.port        = this.io.httpServer.address().port;
 		this.opts        = options.options;
 		this.spawndedClb = options.spawnded;
+		this.userClb     = options.userClb;
 		this.hasErrors   = false;
 		this.spawn();		// after this point we have this.phantom_ps (result of child.cpawn)
 		this.bindEvents(); // after this point we have proxyied this.phantom_ps's io, errors
@@ -35,35 +36,48 @@ var	_              = require('lodash')
 	PhantomSpawner.prototype.spawnded = function() {
 		self = this;
 		process.nextTick(function() {
-			self.spawndedClb(self.hasErrors, self.phantom_ps);
+			if (self.hasErrors) {
+				self.spawndErr.call(self);
+			} else {
+				self.spawndedClb(self.phantom_ps);
+			};
 		});
 	};
 
+	PhantomSpawner.prototype.spawndErr = function() {
+		debug('PhantomSpawner::spawndErr');
+		this.io.httpServer.close();
+		this.phantom_ps.kill();
+		this.userClb(true);
+	};
+
+	// An exit event listener that is registered AFTER the phantomjs process is successfully created.
 	PhantomSpawner.prototype.prematureExitOn = function() {
-		// An exit event listener that is registered AFTER the phantomjs process
-		// is successfully created.
 		var self = this;
-		this.ExitHandler = function (code, signal) {
+		this.exitHandler = function (code, signal) {
 			console.warn('phantom crash: code ' + code);
 			self.io.httpServer.close();
 		};
-		this.phantom_ps.on('exit', this.ExitHandler);
+		this.phantom_ps.on('exit', this.exitHandler);
 	};
-	//an exit is no longer premature now
+
+	// An exit is no longer premature now
 	PhantomSpawner.prototype.prematureExitOff = function() {
-		this.phantom_ps.removeListener('exit', this.ExitHandler);
+		this.phantom_ps.removeListener('exit', this.exitHandler);
 	};
-	// Event handlers
+
+	// Events handlers
 	PhantomSpawner.prototype.stdout_data = function (data) {
 		console.log('phantom stdout: ' + data);
 	};
+
 	PhantomSpawner.prototype.stderr_data = function (data) {
 		console.log('phantom stderr: ' + data);
 	};
+
 	PhantomSpawner.prototype.phantom_errOrexit = function() {
 		var self = this;
 		return function (data) {
-			debug('phantom error or exit: ', data);
 			self.hasErrors = true;
 		};
 	};

@@ -40,13 +40,8 @@ module.exports = {
 			,	spawner = new PhantomSpawner({
 					options: userOptions,
 					io:      io,
-					spawnded: function (err, phantom) {
-						if (err) {
-							debug('spawn_phantom.initCompletedCallback/err', err);
-							io.httpServer.close();
-							userCallback(true);
-							return;
-						}
+					userClb: userCallback,
+					spawnded: function (phantom) {
 						var pages = {}
 						,	cmdid = 0
 						,	cmds  = {}
