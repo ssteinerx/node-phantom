@@ -45,16 +45,10 @@ var	_              = require('lodash')
 				if (self.hasErrors) {
 					self.spawndErr.call(self);
 				} else {
-					// self.spawndedClb(self.phantom_ps);
-					// self.spawndedClb(self);
 					new ioProxy(self); // pass spawner
 				};
 			});
 		};
-
-		// Spawner.prototype.spawndedClb = function() {
-		// 	new ioProxy(this); // pass spawner
-		// };
 
 		Spawner.prototype.spawndErr = function() {
 			debug('Spawner::spawndErr');
