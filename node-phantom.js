@@ -1,14 +1,15 @@
 //Released to the public domain.
-var http     = require('http')
-,	fs       = require('fs')
-,	path     = require('path')
-,	socketio = require('socket.io')
-,	child    = require('child_process')
-,	test     = require('assert')
-,	stub     = fs.readFileSync(path.join(__dirname, "stub.html"))
-,	debug    = console.log
-,	PageProxy = require('./pageproxy')
+var http         = require('http')
+,	fs           = require('fs')
+,	path         = require('path')
+,	socketio     = require('socket.io')
+,	child        = require('child_process')
+,	test         = require('assert')
+,	PageProxy    = require('./pageproxy')
 ,	PhantomProxy = require('./phantomproxy')
+,	Responder    = require('./responder')
+,	stub         = fs.readFileSync(path.join(__dirname, "stub.html"))
+,	debug        = console.log
 ;
 
 var makeCallback = function (callback) {
@@ -116,7 +117,6 @@ module.exports = {
 				function request(socket, args, callback) {
 					args.splice(1, 0, cmdid);
 					socket.emit('cmd', JSON.stringify(args));
-
 					cmds[cmdid] = {
 						cb: makeCallback(callback)
 					};
@@ -124,68 +124,16 @@ module.exports = {
 				}
 
 				io.sockets.on('connection', function (socket) {
-					socket.on('res', function (response) {
-						debug('socket.res\n', response);
-						var id    = response[0]
-						,	cmdId = response[1];
-
-						switch (response[2]) {
-						case 'pageCreated':
-							var pageProxy = new PageProxy({
-								id: id,
-								socket: socket,
-								request: request
-							});
-							pages[id] = pageProxy;
-							cmds[cmdId].cb(null, pageProxy);
-							delete cmds[cmdId];
-							break;
-						case 'phantomExited':
-							request(socket, [0, 'exitAck']);
-							server.close();
-							// io.set('client store expiration', 0);
-							cmds[cmdId].cb();
-							delete cmds[cmdId];
-							break;
-						case 'pageJsInjected':
-						case 'jsInjected':
-							cmds[cmdId].cb(JSON.parse(response[3]) === true ? null : true);
-							delete cmds[cmdId];
-							break;
-						case 'pageOpened':
-							if (cmds[cmdId] !== undefined) { //if page is redirected, the pageopen event is called again - we do not want that currently.
-								if (cmds[cmdId].cb !== undefined) {
-									cmds[cmdId].cb(null, response[3]);
-								}
-								delete cmds[cmdId];
-							}
-							break;
-						case 'pageRenderBase64Done':
-							cmds[cmdId].cb(null, response[3]);
-							delete cmds[cmdId];
-							break;
-						case 'pageGetDone':
-						case 'pageEvaluated':
-							cmds[cmdId].cb(null, JSON.parse(response[3]));
-							delete cmds[cmdId];
-							break;
-						case 'pageClosed':
-							delete pages[id]; // fallthru
-						case 'pageSetDone':
-						case 'pageJsIncluded':
-						case 'cookieAdded':
-						case 'pageRendered':
-						case 'pageEventSent':
-						case 'pageFileUploaded':
-						case 'pageSetViewportDone':
-						case 'pageEvaluatedAsync':
-							cmds[cmdId].cb(null);
-							delete cmds[cmdId];
-							break;
-						default:
-							console.error('got unrecognized response:' + response);
-							break;
-						}
+					socket.on('res', function (res) {
+						debug('socket.res\n', res);
+						new Responder({
+							response: res,
+							pages: pages,
+							cmds: cmds,
+							socket: socket,
+							server: server,
+							request: request
+						}).dispatch();
 					});
 					socket.on('push', function (req) {
 						debug('socket.push\n', req);
@@ -196,14 +144,12 @@ module.exports = {
 						;
 						callback(args);
 					});
-
 					var proxy = new PhantomProxy({
 						socket: socket,
 						request: request,
 						phantom: phantom,
 						spawn_phantom: spawn_phantom
 					});
-
 					callback(null, proxy);
 				});
 

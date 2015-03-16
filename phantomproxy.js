@@ -36,7 +36,7 @@ var PhantomProxy = (function() {
 	PhantomProxy.prototype.on = function () {
 		this.phantom.on.apply(this.phantom, arguments);
 	};
-	
+
 	return PhantomProxy;
 
 })();
