@@ -3,21 +3,22 @@
   "name": "node-phantom",
   "description": "bridge between node.js and PhantomJS",
   "version": "0.2.5",
-  "homepage": "https://github.com/alexscheelmeyer/node-phantom",
+  "homepage": "https://github.com/guryan/node-phantom",
   "repository": {
     "type": "git",
-    "url": "git://github.com/alexscheelmeyer/node-phantom.git"
+    "url": "git//github.com/guryan/node-phantom.git"
   },
   "main": "node-phantom.js",
   "scripts": {
     "test": "mocha"
   },
   "dependencies": {
+    "lodash": "^3.5.0",
     "socket.io": ">=0.9.6"
   },
   "devDependencies": {
-     "mocha": "*",
-     "pngjs": "0.4.0"
+    "mocha": "*",
+    "pngjs": "0.4.0"
   },
   "optionalDependencies": {},
   "engines": {
