@@ -20,6 +20,11 @@ NodePhantomBridge = (function() {
 		// options.keys = [userOptions, userOptions]
 		this.userOptions  = normalize(options.userOptions);
 		this.userCallback = options.userCallback;
+		//
+		this.pages = {};
+		this.cmds  = {};
+		this.cmdid = 0;
+		//
 		this.createHttpServer();	// after this point we have this.httpServer
 		this.attachHttpServer();
 	}
@@ -36,7 +41,7 @@ NodePhantomBridge = (function() {
 		var self = this;	// closure
 		return function () {
 			self.attachSocketIO();	// after this point we have this.io socketio obj
-			self.spawnPhantom();	// after this point we have
+			self.spawnPhantom();	// after this point we have phantom spawnded
 		};
 	};
 
@@ -46,15 +51,9 @@ NodePhantomBridge = (function() {
 
 	NodePhantomBridge.prototype.spawnPhantom = function() {
 		var	spawner = new PhantomSpawner({
-				io:      this.io,
-				userClb: this.userCallback,
-				options: this.userOptions,
-				pages: {},
-				cmdid: 0,
-				cmds: {},
-				spawnded: function (phantom) {
+				bridge:  this,
+				spawnded: function () {
 					new ioProxy(spawner);
-					spawner.prematureExitOn();
 				}
 		});
 	};

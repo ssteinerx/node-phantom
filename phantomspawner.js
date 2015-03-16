@@ -6,15 +6,18 @@ var	_              = require('lodash')
 		return callback;
 }
 ,	PhantomSpawner = (function() {
-	var PhantomSpawner = function PhantomSpawner(options) {
-		this.io          = options.io;
-		this.opts        = options.options;
-		this.spawndedClb = options.spawnded;
-		this.userClb     = options.userClb;
+	function PhantomSpawner(options) {
+		var bridge = options.bridge;
 
-		this.pages       = options.pages;
-		this.cmdid       = options.cmdid;
-		this.cmds        = options.cmds;
+		this.bridge      = bridge;
+		this.io          = bridge.io;
+		this.userClb     = bridge.userCallback;
+		this.opts        = bridge.userOptions;
+		this.pages       = bridge.pages;
+		this.cmdid       = bridge.cmdid;
+		this.cmds        = bridge.cmds;
+
+		this.spawndedClb = options.spawnded;
 
 		this.port        = this.io.httpServer.address().port;
 		this.hasErrors   = false;

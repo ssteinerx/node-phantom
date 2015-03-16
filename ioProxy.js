@@ -8,7 +8,8 @@ ioProxy = (function() {
 		this.spawner = spawner;
 		this.userClb = spawner.userClb;
 		spawner.io.sockets.on('connection', this.onConnection());
-	}
+		spawner.prematureExitOn();
+	};
 
 	ioProxy.prototype.onConnection =  function () {
 		var self = this;
@@ -47,8 +48,8 @@ ioProxy = (function() {
 			});
 		};
 	};
-  return ioProxy;
 
+	return ioProxy;
 })();
 
 module.exports = ioProxy;
