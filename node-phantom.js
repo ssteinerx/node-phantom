@@ -1,16 +1,10 @@
-var	NodePhantomBridge = require('./nodePhantomBridge')
-,	normalize = function(opts) {
-		if (!opts) { opts = {} };
-		if (!opts.phantomPath) { opts.phantomPath = 'phantomjs' };
-		if (!opts.parameters)  { opts.parameters  = {} };
-		return opts;
-	};
+var	NodePhantomBridge = require('./nodePhantomBridge');
 
 module.exports = {
-	create: function (userCallback, userOptions) {
+	create: function (clb, opt) {
 		new NodePhantomBridge({
-			userOptions: normalize(userOptions),
-			userCallback: userCallback
+			userOptions: opt,
+			userCallback: clb
 		});
 	}
 };

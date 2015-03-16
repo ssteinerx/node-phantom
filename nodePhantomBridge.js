@@ -12,24 +12,18 @@ NodePhantomBridge = (function() {
 
 	function NodePhantomBridge(options) {
 		// options.keys = [userOptions, userOptions]
+		this.userOptions  = normalize(options.userOptions);
 		this.userCallback = options.userCallback;
-		this.userOptions  = options.userOptions;
 		this.createHttpServer()	// after this point we have this.httpServer
 		this.attachServer()		// after this point we have this.httpServer
 	}
 
 	NodePhantomBridge.prototype.createHttpServer = function() {
-		this.httpServer = http.createServer(this.httpReqListener);
+		this.httpServer = http.createServer(httpReqListener);
 	};
 
 	NodePhantomBridge.prototype.attachServer = function() {
 		this.httpServer.listen(this.onHttpServerListen())
-	};
-
-	NodePhantomBridge.prototype.httpReqListener = function (req, res) {
-		// Our http server 'request' event listener, that simple serve stub.html which will be 'eaten' by phantom
-		res.writeHead(200, { "Content-Type": "text/html" });
-		res.end(html);
 	};
 
 	NodePhantomBridge.prototype.onHttpServerListen = function() {
@@ -49,6 +43,21 @@ NodePhantomBridge = (function() {
 					}
 				});
 		};
+	};
+
+	// 'private'
+
+	var httpReqListener = function (req, res) {
+		// Our http server 'request' event listener, that simple serve stub.html which will be 'eaten' by phantom
+		res.writeHead(200, { "Content-Type": "text/html" });
+		res.end(html);
+	};
+
+	var normalize = function(opts) {
+		if (!opts) { opts = {} };
+		if (!opts.phantomPath) { opts.phantomPath = 'phantomjs' };
+		if (!opts.parameters)  { opts.parameters  = {} };
+		return opts;
 	};
 
   return NodePhantomBridge;
