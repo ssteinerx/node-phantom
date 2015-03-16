@@ -3,7 +3,6 @@ var _             = require('lodash')
 ,	PageProxy     = require('./pageproxy')
 ,	BaseResponder = require('./base_responder')
 ,	debug         = console.log
-,	debug         = function() {}
 ,	ResResponder  = (function() {
 
 	function ResResponder(options) {
