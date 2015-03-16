@@ -1,14 +1,14 @@
 //Released to the public domain.
-var http          = require('http')
-,	fs            = require('fs')
-,	path          = require('path')
-,	socketio      = require('socket.io')
-,	PageProxy     = require('./pageproxy')
-,	PhantomProxy  = require('./phantomproxy')
-,	Responder     = require('./responder')
+var http           = require('http')
+,	fs             = require('fs')
+,	path           = require('path')
+,	socketio       = require('socket.io')
+,	PageProxy      = require('./pageproxy')
+,	PhantomProxy   = require('./phantomproxy')
+,	ResResponder   = require('./res_responder')
 ,	PhantomSpawner = require('./phantomspawner')
-,	stub          = fs.readFileSync(path.join(__dirname, "stub.html"))
-,	debug         = console.log
+,	stub           = fs.readFileSync(path.join(__dirname, "stub.html"))
+,	debug          = console.log
 ;
 
 var makeCallback = function (callback) {
@@ -50,16 +50,13 @@ module.exports = {
 					cmds: cmds,
 
 					spawnded: function (phantom) {
-						var request = spawner.request();
-
 						io.sockets.on('connection', function (socket) {
 							socket.on('res', function (res) {
-								debug('socket.res\n', res);
-								new Responder({
+								new ResResponder({
 									response: res,
 									socket: socket,
 									spawner: spawner
-								}).dispatch();
+								})
 							});
 							socket.on('push', function (req) {
 								debug('socket.push\n', req);
