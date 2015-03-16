@@ -4,7 +4,6 @@ var http           = require('http')
 ,	path           = require('path')
 ,	socketio       = require('socket.io')
 ,	ioProxy        = require('./ioProxy')
-,	PageProxy      = require('./pageproxy')
 ,	PhantomSpawner = require('./phantomspawner')
 ,	stub           = fs.readFileSync(path.join(__dirname, "stub.html"))
 ,	debug          = console.log
