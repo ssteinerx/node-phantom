@@ -1,9 +1,9 @@
 var PhantomProxy = (function() {
 	function PhantomProxy(options) {
 		this.socket   = options.socket;
-		this.request  = options.request;
 		this.phantom  = options.phantom;
 		this.spawner  = options.spawner;
+		this.request  = this.spawner.request();
 		return this;
 	}
 

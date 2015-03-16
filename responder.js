@@ -8,17 +8,21 @@ Responder = (function() {
 
 	function Responder(options) {
 		var response  = options.response;
-		this.pages    = options.pages;
-		this.cmds     = options.cmds;
-		this.socket   = options.socket;
-		this.request  = options.request;
-		this.server   = options.server;
-		// 
 		this.id       = response[0];
 		this.cmdId    = response[1];
 		this.cmd      = response[2];
 		this.cbData   = response[3];
 		this.response = response;
+
+
+		this.socket   = options.socket;
+		this.spawner  = options.spawner;
+
+		this.pages    = this.spawner.pages;
+		this.cmds     = this.spawner.cmds;
+		this.request  = this.spawner.request();
+		this.server   = this.spawner.io.httpServer;
+
 		return this;
 	}
 
@@ -49,7 +53,6 @@ Responder = (function() {
 	};
 
 	Responder.prototype.pageCreated = function() {
-		debug('pageCreated', this.pages);
 		var pageProxy = new PageProxy({
 			id:      this.id,
 			socket:  this.socket,

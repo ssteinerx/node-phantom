@@ -37,35 +37,28 @@ module.exports = {
 		var server = http.createServer(httpReqListener);
 		server.listen(function () {
 			var	io   = socketio.listen(server, { 'log level': 1})
+			,	pages = {}
+			,	cmdid = 0
+			,	cmds  = {}
 			,	spawner = new PhantomSpawner({
 					options: userOptions,
 					io:      io,
 					userClb: userCallback,
-					spawnded: function (phantom) {
-						var pages = {}
-						,	cmdid = 0
-						,	cmds  = {}
-						;
 
-						function request(socket, args, callback) {
-							args.splice(1, 0, cmdid);
-							socket.emit('cmd', JSON.stringify(args));
-							cmds[cmdid] = {
-								cb: makeCallback(callback)
-							};
-							cmdid++;
-						}
+					pages: pages,
+					cmdid: cmdid,
+					cmds: cmds,
+
+					spawnded: function (phantom) {
+						var request = spawner.request();
 
 						io.sockets.on('connection', function (socket) {
 							socket.on('res', function (res) {
 								debug('socket.res\n', res);
 								new Responder({
 									response: res,
-									pages: pages,
-									cmds: cmds,
 									socket: socket,
-									server: server,
-									request: request
+									spawner: spawner
 								}).dispatch();
 							});
 							socket.on('push', function (req) {
@@ -79,8 +72,6 @@ module.exports = {
 							});
 							userCallback(null, new PhantomProxy({
 								socket: socket,
-								request: request,
-								phantom: phantom,
 								spawner: spawner
 							}));
 						});

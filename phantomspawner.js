@@ -1,14 +1,24 @@
 var	_              = require('lodash')
 ,	child          = require('child_process')
 ,	debug          = console.log
+,	makeCallback = function (callback) {
+		if (callback === undefined) callback = function () {};
+		return callback;
+}
 ,	PhantomSpawner = (function() {
 	var PhantomSpawner = function PhantomSpawner(options) {
 		this.io          = options.io;
-		this.port        = this.io.httpServer.address().port;
 		this.opts        = options.options;
 		this.spawndedClb = options.spawnded;
 		this.userClb     = options.userClb;
+
+		this.pages       = options.pages;
+		this.cmdid       = options.cmdid;
+		this.cmds        = options.cmds;
+
+		this.port        = this.io.httpServer.address().port;
 		this.hasErrors   = false;
+
 		this.spawn();		// after this point we have this.phantom_ps (result of child.cpawn)
 		this.bindEvents(); // after this point we have proxyied this.phantom_ps's io, errors
 		this.spawnded();
@@ -65,6 +75,19 @@ var	_              = require('lodash')
 	PhantomSpawner.prototype.prematureExitOff = function() {
 		this.phantom_ps.removeListener('exit', this.exitHandler);
 	};
+
+	// Return request function
+	PhantomSpawner.prototype.request = function () {
+		var self = this;
+		return function (socket, args, callback) {
+			args.splice(1, 0, self.cmdid);
+			socket.emit('cmd', JSON.stringify(args));
+			self.cmds[self.cmdid] = {
+				cb: makeCallback(callback)
+			};
+			self.cmdid++;
+		};
+	}
 
 	// Events handlers
 	PhantomSpawner.prototype.stdout_data = function (data) {
