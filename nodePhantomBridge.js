@@ -1,12 +1,11 @@
-var fs             = require('fs')
-,	path           = require('path')
-,	http           = require('http')
-,	socketio       = require('socket.io')
-,	html           = fs.readFileSync(path.join(__dirname, "stub.html"))
-,	ioProxy        = require('./ioProxy')
-,	PhantomSpawner = require('./phantomspawner')
-,	debug          = console.log
-,	_              = require('lodash')
+var _       = require('lodash')
+,	fs      = require('fs')
+,	path    = require('path')
+,	http    = require('http')
+,	socketio= require('socket.io')
+,	html    = fs.readFileSync(path.join(__dirname, "stub.html"))
+,	Spawner = require('./spawner')
+,	debug   = console.log
 ,	NodePhantomBridge;
 
 
@@ -34,10 +33,10 @@ NodePhantomBridge = (function() {
 	};
 
 	NodePhantomBridge.prototype.attachHttpServer = function() {
-		this.httpServer.listen(this.onHttpServerListen())
+		this.httpServer.listen(this.onListen())
 	};
 
-	NodePhantomBridge.prototype.onHttpServerListen = function() {
+	NodePhantomBridge.prototype.onListen = function() {
 		var self = this;	// closure
 		return function () {
 			self.attachSocketIO();	// after this point we have this.io socketio obj
@@ -50,12 +49,7 @@ NodePhantomBridge = (function() {
 	};
 
 	NodePhantomBridge.prototype.spawnPhantom = function() {
-		var	spawner = new PhantomSpawner({
-				bridge:  this,
-				spawnded: function () {
-					new ioProxy(spawner);
-				}
-		});
+		new Spawner(this);
 	};
 
 	// 'private'
