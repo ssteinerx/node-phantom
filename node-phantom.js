@@ -6,7 +6,7 @@ var http          = require('http')
 ,	PageProxy     = require('./pageproxy')
 ,	PhantomProxy  = require('./phantomproxy')
 ,	Responder     = require('./responder')
-,	spawn_phantom = require('./spawn_phantom')
+,	PhantomSpawner = require('./phantomspawner')
 ,	stub          = fs.readFileSync(path.join(__dirname, "stub.html"))
 ,	debug         = console.log
 ;
@@ -37,64 +37,64 @@ module.exports = {
 		var server = http.createServer(httpReqListener);
 		server.listen(function () {
 			var port = server.address().port
-			,	io   = socketio.listen(server, { 'log level': 1});
-			spawn_phantom({
-				options: userOptions,
-				port:    port,
-				io:      io,
-				spawnded: function (err, phantom) {
-					if (err) {
-						debug('spawn_phantom.initCompletedCallback/err', err);
-						io.httpServer.close();
-						userCallback(true);
-						return;
-					}
-					var pages = {}
-					,	cmdid = 0
-					,	cmds  = {}
-					;
+			,	io   = socketio.listen(server, { 'log level': 1})
+			,	spawner = new PhantomSpawner({
+					options: userOptions,
+					port:    port,
+					io:      io,
+					spawnded: function (err, phantom) {
+						if (err) {
+							debug('spawn_phantom.initCompletedCallback/err', err);
+							io.httpServer.close();
+							userCallback(true);
+							return;
+						}
+						var pages = {}
+						,	cmdid = 0
+						,	cmds  = {}
+						;
 
-					function request(socket, args, callback) {
-						args.splice(1, 0, cmdid);
-						socket.emit('cmd', JSON.stringify(args));
-						cmds[cmdid] = {
-							cb: makeCallback(callback)
-						};
-						cmdid++;
-					}
+						function request(socket, args, callback) {
+							args.splice(1, 0, cmdid);
+							socket.emit('cmd', JSON.stringify(args));
+							cmds[cmdid] = {
+								cb: makeCallback(callback)
+							};
+							cmdid++;
+						}
 
-					io.sockets.on('connection', function (socket) {
-						socket.on('res', function (res) {
-							debug('socket.res\n', res);
-							new Responder({
-								response: res,
-								pages: pages,
-								cmds: cmds,
+						io.sockets.on('connection', function (socket) {
+							socket.on('res', function (res) {
+								debug('socket.res\n', res);
+								new Responder({
+									response: res,
+									pages: pages,
+									cmds: cmds,
+									socket: socket,
+									server: server,
+									request: request
+								}).dispatch();
+							});
+							socket.on('push', function (req) {
+								debug('socket.push\n', req);
+								var id       = req[0]
+								,	cmd      = req[1]
+								,	args     = unwrapArray(req[2])
+								,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
+								;
+								callback(args);
+							});
+							userCallback(null, new PhantomProxy({
 								socket: socket,
-								server: server,
-								request: request
-							}).dispatch();
+								request: request,
+								phantom: phantom,
+								spawner: spawner
+							}));
 						});
-						socket.on('push', function (req) {
-							debug('socket.push\n', req);
-							var id       = req[0]
-							,	cmd      = req[1]
-							,	args     = unwrapArray(req[2])
-							,	callback = makeCallback(pages[id] ? pages[id][cmd] : undefined)
-							;
-							callback(args);
-						});
-						userCallback(null, new PhantomProxy({
-							socket: socket,
-							request: request,
-							phantom: phantom,
-							spawn_phantom: spawn_phantom
-						}));
-					});
 
-					spawn_phantom.prematureExitOn(); // not instance, but class
-				}
-			});
+						spawner.prematureExitOn(); // not instance, but class
+					}
+				});
 		});
 	}
 };

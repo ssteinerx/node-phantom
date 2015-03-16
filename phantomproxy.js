@@ -3,7 +3,7 @@ var PhantomProxy = (function() {
 		this.socket   = options.socket;
 		this.request  = options.request;
 		this.phantom  = options.phantom;
-		this.spawn_phantom  = options.spawn_phantom;
+		this.spawner  = options.spawner;
 		return this;
 	}
 
@@ -26,7 +26,7 @@ var PhantomProxy = (function() {
 	};
 
 	PhantomProxy.prototype.exit = function (callback) {
-		this.spawn_phantom.prematureExitOff(); //an exit is no longer premature now
+		this.spawner.prematureExitOff(); //an exit is no longer premature now
 		this.request( this.socket
 					, [0, 'exit']
 					, callback );
