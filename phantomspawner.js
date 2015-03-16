@@ -3,11 +3,11 @@ var	_              = require('lodash')
 ,	debug          = console.log
 ,	PhantomSpawner = (function() {
 	var PhantomSpawner = function PhantomSpawner(options) {
-		this.port             = options.port;
-		this.io               = options.io;
-		this.opts             = options.options;
-		this.spawndedCallback = options.spawnded;
-		this.hasErrors        = false;
+		this.io          = options.io;
+		this.port        = this.io.httpServer.address().port;
+		this.opts        = options.options;
+		this.spawndedClb = options.spawnded;
+		this.hasErrors   = false;
 		this.spawn();		// after this point we have this.phantom_ps (result of child.cpawn)
 		this.bindEvents(); // after this point we have proxyied this.phantom_ps's io, errors
 		this.spawnded();
@@ -35,7 +35,7 @@ var	_              = require('lodash')
 	PhantomSpawner.prototype.spawnded = function() {
 		self = this;
 		process.nextTick(function() {
-			self.spawndedCallback(self.hasErrors, self.phantom_ps);
+			self.spawndedClb(self.hasErrors, self.phantom_ps);
 		});
 	};
 
@@ -45,7 +45,7 @@ var	_              = require('lodash')
 		var self = this;
 		this.ExitHandler = function (code, signal) {
 			console.warn('phantom crash: code ' + code);
-			self.io.httpServiser.close();
+			self.io.httpServer.close();
 		};
 		this.phantom_ps.on('exit', this.ExitHandler);
 	};

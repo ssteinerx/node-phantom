@@ -36,11 +36,9 @@ module.exports = {
 
 		var server = http.createServer(httpReqListener);
 		server.listen(function () {
-			var port = server.address().port
-			,	io   = socketio.listen(server, { 'log level': 1})
+			var	io   = socketio.listen(server, { 'log level': 1})
 			,	spawner = new PhantomSpawner({
 					options: userOptions,
-					port:    port,
 					io:      io,
 					spawnded: function (err, phantom) {
 						if (err) {
