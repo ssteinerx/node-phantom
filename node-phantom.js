@@ -1,10 +1,8 @@
-var	NodePhantomBridge = require('./nodePhantomBridge');
+var	NodePhantom = require('./lib/nodejs/bridge');
 
-module.exports = {
-	create: function (clb, opt) {
-		new NodePhantomBridge({
-			userOptions: opt,
-			userCallback: clb
-		});
-	}
+exports.create = function (clb, opt) {
+	new NodePhantom({
+		userOptions: opt,
+		userCallback: clb
+	});
 };
